@@ -11,6 +11,20 @@
     font-size: 16px;
     background-color: #dde1e2; 
     width: 100%;
+    
+    /*no deja hacer pull to refresh (es cdo haces para abajo y actualiza la pagina entera)*/
+    overscroll-behavior-y: contain; 
+
+
+    /*no deja seleccionar texto*/
+    -webkit-user-select: none;
+
+    /*no hace highlight*/
+    -webkit-tap-highlight-color: transparent;
+
+    /*saca el callout de iOS*/
+    /*ver mas en: https://medium.com/appscope/designing-native-like-progressive-web-apps-for-ios-1b3cdda1d0e8*/
+    -webkit-touch-callout: none;
 }
 
 /* Personalizados */
