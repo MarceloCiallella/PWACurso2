@@ -18,7 +18,7 @@ if ( navigator.serviceWorker ) {
 
 
 // Referencias de jQuery
-//KEY CIALLELLA: 'AIzaSyC-WCKOYNfE90Jw6OcyypIWRfjjAV7SxLc';
+
 var googleMapKey = 'AIzaSyDyJPPlnIMOLp20Ef1LlTong8rYdTnaTXM';
 
 
