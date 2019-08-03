@@ -1,11 +1,16 @@
+// imports
+importScripts('https://cdn.jsdelivr.net/npm/pouchdb@7.1.1/dist/pouchdb.min.js');
 importScripts('js/sw-utils.js');
 
-const STATIC_CACHE = 'static-v6';
-const DYNAMIC_CACHE = 'dynamic-v2';
-const INMUTABLE_CACHE = 'inmut-v1';
+
+
+const STATIC_CACHE    = 'static-v1';
+const DYNAMIC_CACHE   = 'dynamic-v1';
+const INMUTABLE_CACHE = 'inmutable-v1';
+
 
 const APP_SHELL = [
-    // '/',
+    '/',
     'index.html',
     'css/style.css',
     'img/favicon.ico',
@@ -14,63 +19,58 @@ const APP_SHELL = [
     'img/avatars/spiderman.jpg',
     'img/avatars/thor.jpg',
     'img/avatars/wolverine.jpg',
-    'js/app.js'
+    'js/app.js',
+    'js/sw-utils.js',
+    'js/libs/plugin/mdtoast.min.js',
+    'js/libs/plugin/mdtoast.min.css',
+    'js/camera-class.js'
 ];
 
-
-const APP_SHELL_INMUT = [
+const APP_SHELL_INMUTABLE = [
     'https://fonts.googleapis.com/css?family=Quicksand:300,400',
     'https://fonts.googleapis.com/css?family=Lato:400,300',
     'https://use.fontawesome.com/releases/v5.3.1/css/all.css',
-    'css/animate.css',
-    'js/libs/jquery.js',
-    'js/sw-utils.js'
+    'https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js',
+    'https://cdn.jsdelivr.net/npm/pouchdb@7.1.1/dist/pouchdb.min.js'
 ];
+
+
 
 self.addEventListener('install', e => {
 
 
-    const cacheStatic = caches.open(STATIC_CACHE).then(cache => {
+    const cacheStatic = caches.open( STATIC_CACHE ).then(cache => 
+        cache.addAll( APP_SHELL ));
 
-        cache.addAll(APP_SHELL);
-    })
+    const cacheInmutable = caches.open( INMUTABLE_CACHE ).then(cache => 
+        cache.addAll( APP_SHELL_INMUTABLE ));
 
-    const cacheInmut = caches.open(INMUTABLE_CACHE).then(cache => {
 
-        cache.addAll(APP_SHELL_INMUT);
-    })
-    
-    e.waitUntil( Promise.all([cacheStatic, cacheInmut]) );
 
+    e.waitUntil( Promise.all([ cacheStatic, cacheInmutable ])  );
 
 });
 
 
-
 self.addEventListener('activate', e => {
 
-    //para que no crezca indefinidamente la cache cada vez q cambio de versiones
-    //es decir, cada vez q cambie version, el navegador va a guardar un archivo nuevo!
-    //EJ. staticv2 y staticv3....dejaría los dos creados, pero quiero q mantenga el ultimo
-    //lo que hago aqui es dejar el ultimo...q esta en cache_static_name!
-    const respuesta = 
-    caches.keys().then(keys => {
+    const respuesta = caches.keys().then( keys => {
 
         keys.forEach( key => {
 
-            if ( key !== STATIC_CACHE && key.includes('static'))
-            {
+            if (  key !== STATIC_CACHE && key.includes('static') ) {
                 return caches.delete(key);
             }
 
-            if ( key !== DYNAMIC_CACHE && key.includes('dynamic'))
-            {
+            if (  key !== DYNAMIC_CACHE && key.includes('dynamic') ) {
                 return caches.delete(key);
             }
 
-        })
-    })
-    
+        });
+
+    });
+
     e.waitUntil( respuesta );
 
 });
@@ -78,31 +78,59 @@ self.addEventListener('activate', e => {
 
 
 
-self.addEventListener('fetch', e =>{
 
-   
+self.addEventListener( 'fetch', e => {
 
-   const respuesta = caches.match( e.request ).then (resp => {
+    let respuesta;
 
-    if (resp)
+    //esto es para q lo q viene de una api (voy a usar el link "api")
+    //cdo viene de ahi, quiero q le de prioridad a lo q trae, asi es mas actualizado
+    if (e.request.url.includes('/api'))
     {
-        return resp;
-    }
+        respuesta =  manejoApiMensajes(DYNAMIC_CACHE, e.request);
+    } 
     else
     {
-        return fetch( e.request).then ( newResp => {
+        respuesta = caches.match( e.request ).then( res => {
 
-            //esta funcion esta en js/sw-utils (hace el importscrip en la linea 1 )
-            return actualizaCacheDinamico(DYNAMIC_CACHE, e.request, newResp);
-
+            //si la respuesta existe en cache
+            if ( res ) {
+                
+                actualizaCacheStatico( STATIC_CACHE, e.request, APP_SHELL_INMUTABLE );
+                return res;
+            } else {
+    
+                return fetch( e.request ).then( newRes => {
+    
+                    return actualizaCacheDinamico( DYNAMIC_CACHE, e.request, newRes );
+    
+                });
+    
+            }
+    
         });
+    
     }
 
-   }); 
+
+    
 
 
     e.respondWith( respuesta );
 
-
-
 });
+
+
+//tareas asincronas
+self.addEventListener('sync', e => {
+
+    if ( e.tag === 'nuevo-post' )
+    {
+        //postear a DB cdo vuelve la conexion
+        //esto esta en sw-util
+        const respuesta = postearMensajes();//no recibe nada xq tenemos todo guardado en pouchdb
+
+        e.waitUntil( respuesta );
+    }
+});
+
